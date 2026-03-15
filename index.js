@@ -55,7 +55,7 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
   console.log('Comandos registrados!');
 })();
 
-client.once('ready', () => {
+client.once('clientReady', () => {
   console.log(`✅ Bot online como ${client.user.tag}`);
 });
 
@@ -63,47 +63,59 @@ client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
   if (interaction.commandName !== 'anunciar') return;
 
-  // Só admins podem usar
-  if (!interaction.member.permissions.has('Administrator')) {
-    return interaction.reply({
-      content: '❌ Apenas administradores podem usar este comando.',
-      ephemeral: true
+  try {
+    // Esconde o comando imediatamente
+    await interaction.deferReply({ ephemeral: true });
+
+    if (!interaction.member.permissions.has('Administrator')) {
+      return interaction.editReply({
+        content: '❌ Apenas administradores podem usar este comando.'
+      });
+    }
+
+    const destino  = interaction.options.getString('canal');
+    const mensagem = interaction.options.getString('mensagem');
+    const titulo   = interaction.options.getString('titulo');
+
+    const tituloPadrao = destino === 'lore' ? '📜 Crônicas do Reino' : '📢 Aviso Oficial';
+
+    const canalId = CANAIS[destino];
+    const canal   = client.channels.cache.get(canalId);
+
+    if (!canal) {
+      return interaction.editReply({
+        content: '❌ Canal não encontrado. Verifique as variáveis de ambiente.'
+      });
+    }
+
+    const cor = destino === 'lore' ? 0xD4AF37 : 0xE74C3C;
+
+    const embed = new EmbedBuilder()
+      .setTitle(titulo || tituloPadrao)
+      .setDescription(mensagem)
+      .setColor(cor)
+      .setTimestamp()
+      .setFooter({ text: 'Crônicas Oficiais do Servidor' });
+
+    await canal.send({ embeds: [embed] });
+
+    await interaction.editReply({
+      content: `✅ Anúncio enviado em <#${canalId}>!`
     });
+
+  } catch (erro) {
+    console.error('Erro ao processar comando:', erro);
+    if (!interaction.replied && !interaction.deferred) {
+      await interaction.reply({
+        content: '❌ Ocorreu um erro ao processar o comando.',
+        ephemeral: true
+      });
+    } else {
+      await interaction.editReply({
+        content: '❌ Ocorreu um erro ao processar o comando.'
+      });
+    }
   }
-
-  const destino  = interaction.options.getString('canal');
-  const mensagem = interaction.options.getString('mensagem');
-  const titulo   = interaction.options.getString('titulo');
-
-  // Título padrão por canal
-  const tituloPadrao = destino === 'lore' ? '📜 Crônicas do Reino' : '📢 Aviso Oficial';
-
-  const canalId = CANAIS[destino];
-  const canal   = client.channels.cache.get(canalId);
-
-  if (!canal) {
-    return interaction.reply({
-      content: '❌ Canal não encontrado. Verifique as variáveis de ambiente.',
-      ephemeral: true
-    });
-  }
-
-  // Cor diferente por canal
-  const cor = destino === 'lore' ? 0xD4AF37 : 0xE74C3C;
-
-  const embed = new EmbedBuilder()
-    .setTitle(titulo || tituloPadrao)
-    .setDescription(mensagem)
-    .setColor(cor)
-    .setTimestamp()
-    .setFooter({ text: 'Crônicas Oficiais do Servidor' });
-
-  await canal.send({ embeds: [embed] });
-
-  await interaction.reply({
-    content: `✅ Anúncio enviado em <#${canalId}>!`,
-    ephemeral: true
-  });
 });
 
 client.login(process.env.DISCORD_TOKEN);
