@@ -12,13 +12,11 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
 
-// Mapa de canais disponíveis
 const CANAIS = {
   lore:   process.env.CANAL_LORE,
   avisos: process.env.CANAL_AVISOS,
 };
 
-// Registrar o comando slash
 const commands = [
   new SlashCommandBuilder()
     .setName('anunciar')
@@ -39,7 +37,12 @@ const commands = [
     )
     .addStringOption(opt =>
       opt.setName('titulo')
-        .setDescription('Título do anúncio (opcional)')
+        .setDescription('Título do anúncio (padrão: Crônicas do Reino)')
+        .setRequired(false)
+    )
+    .addStringOption(opt =>
+      opt.setName('imagem')
+        .setDescription('URL da imagem (opcional, só para o canal de Lore)')
         .setRequired(false)
     )
 ].map(cmd => cmd.toJSON());
@@ -64,7 +67,6 @@ client.on('interactionCreate', async interaction => {
   if (interaction.commandName !== 'anunciar') return;
 
   try {
-    // Esconde o comando imediatamente
     await interaction.deferReply({ ephemeral: true });
 
     if (!interaction.member.permissions.has('Administrator')) {
@@ -76,8 +78,10 @@ client.on('interactionCreate', async interaction => {
     const destino  = interaction.options.getString('canal');
     const mensagem = interaction.options.getString('mensagem');
     const titulo   = interaction.options.getString('titulo');
+    const imagem   = interaction.options.getString('imagem');
 
     const tituloPadrao = destino === 'lore' ? '📜 Crônicas do Reino' : '📢 Aviso Oficial';
+    const cor = destino === 'lore' ? 0xD4AF37 : 0xE74C3C;
 
     const canalId = CANAIS[destino];
     const canal   = client.channels.cache.get(canalId);
@@ -88,14 +92,17 @@ client.on('interactionCreate', async interaction => {
       });
     }
 
-    const cor = destino === 'lore' ? 0xD4AF37 : 0xE74C3C;
-
     const embed = new EmbedBuilder()
       .setTitle(titulo || tituloPadrao)
       .setDescription(mensagem)
       .setColor(cor)
       .setTimestamp()
-      .setFooter({ text: 'Crônicas Oficiais do Servidor' });
+      .setFooter({ text: '✦ Crônicas Oficiais do Servidor ✦' });
+
+    // Adiciona imagem apenas se for lore e URL foi fornecida
+    if (destino === 'lore' && imagem) {
+      embed.setImage(imagem);
+    }
 
     await canal.send({ embeds: [embed] });
 
@@ -104,15 +111,17 @@ client.on('interactionCreate', async interaction => {
     });
 
   } catch (erro) {
-    console.error('Erro ao processar comando:', erro);
+    console.error('Erro completo:', erro.message);
+    console.error('Stack:', erro.stack);
+
     if (!interaction.replied && !interaction.deferred) {
       await interaction.reply({
-        content: '❌ Ocorreu um erro ao processar o comando.',
+        content: `❌ Erro: ${erro.message}`,
         ephemeral: true
       });
     } else {
       await interaction.editReply({
-        content: '❌ Ocorreu um erro ao processar o comando.'
+        content: `❌ Erro: ${erro.message}`
       });
     }
   }
