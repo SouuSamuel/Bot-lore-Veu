@@ -13,9 +13,9 @@ const client = new Client({
 });
 
 const CANAIS = {
-  lore:    process.env.CANAL_LORE,
-  avisos:  process.env.CANAL_AVISOS,
-  server:  process.env.CANAL_SERVER,
+  lore:   process.env.CANAL_LORE,
+  avisos: process.env.CANAL_AVISOS,
+  server: process.env.CANAL_SERVER,
 };
 
 const commands = [
@@ -27,9 +27,9 @@ const commands = [
         .setDescription('Onde postar o anúncio')
         .setRequired(true)
         .addChoices(
-          { name: '📜 Lore',      value: 'lore'   },
-          { name: '📢 Avisos',    value: 'avisos'  },
-          { name: '⚔️ Servidor',  value: 'server'  },
+          { name: '📜 Lore',     value: 'lore'   },
+          { name: '📢 Avisos',   value: 'avisos'  },
+          { name: '⚔️ Servidor', value: 'server'  },
         )
     )
     .addStringOption(opt =>
@@ -45,6 +45,11 @@ const commands = [
     .addStringOption(opt =>
       opt.setName('imagem')
         .setDescription('URL da imagem (opcional, só para Lore)')
+        .setRequired(false)
+    )
+    .addStringOption(opt =>
+      opt.setName('link')
+        .setDescription('Link do YouTube ou outro (opcional, aparece com prévia)')
         .setRequired(false)
     )
 ].map(cmd => cmd.toJSON());
@@ -81,15 +86,14 @@ client.on('interactionCreate', async interaction => {
     const mensagem = interaction.options.getString('mensagem');
     const titulo   = interaction.options.getString('titulo');
     const imagem   = interaction.options.getString('imagem');
+    const link     = interaction.options.getString('link');
 
-    // Título padrão por canal
     const tituloPadrao = {
       lore:   '📜 Crônicas do Reino',
       avisos: '📢 Aviso Oficial',
       server: '⚔️ Notícia do Servidor',
     }[destino];
 
-    // Cor por canal
     const cor = {
       lore:   0xD4AF37,
       avisos: 0xE74C3C,
@@ -122,6 +126,11 @@ client.on('interactionCreate', async interaction => {
       embeds: [embed],
       allowedMentions: { parse: ['everyone'] }
     });
+
+    // Se tiver link, envia separado para gerar a prévia
+    if (link) {
+      await canal.send({ content: link });
+    }
 
     await interaction.editReply({
       content: `✅ Anúncio enviado em <#${canalId}>!`
