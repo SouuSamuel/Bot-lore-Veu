@@ -13,8 +13,9 @@ const client = new Client({
 });
 
 const CANAIS = {
-  lore:   process.env.CANAL_LORE,
-  avisos: process.env.CANAL_AVISOS,
+  lore:    process.env.CANAL_LORE,
+  avisos:  process.env.CANAL_AVISOS,
+  server:  process.env.CANAL_SERVER,
 };
 
 const commands = [
@@ -26,8 +27,9 @@ const commands = [
         .setDescription('Onde postar o anúncio')
         .setRequired(true)
         .addChoices(
-          { name: '📜 Lore', value: 'lore' },
-          { name: '📢 Avisos', value: 'avisos' },
+          { name: '📜 Lore',      value: 'lore'   },
+          { name: '📢 Avisos',    value: 'avisos'  },
+          { name: '⚔️ Servidor',  value: 'server'  },
         )
     )
     .addStringOption(opt =>
@@ -37,12 +39,12 @@ const commands = [
     )
     .addStringOption(opt =>
       opt.setName('titulo')
-        .setDescription('Título do anúncio (padrão: Crônicas do Reino)')
+        .setDescription('Título do anúncio (opcional)')
         .setRequired(false)
     )
     .addStringOption(opt =>
       opt.setName('imagem')
-        .setDescription('URL da imagem (opcional, só para o canal de Lore)')
+        .setDescription('URL da imagem (opcional, só para Lore)')
         .setRequired(false)
     )
 ].map(cmd => cmd.toJSON());
@@ -80,8 +82,19 @@ client.on('interactionCreate', async interaction => {
     const titulo   = interaction.options.getString('titulo');
     const imagem   = interaction.options.getString('imagem');
 
-    const tituloPadrao = destino === 'lore' ? '📜 Crônicas do Reino' : '📢 Aviso Oficial';
-    const cor = destino === 'lore' ? 0xD4AF37 : 0xE74C3C;
+    // Título padrão por canal
+    const tituloPadrao = {
+      lore:   '📜 Crônicas do Reino',
+      avisos: '📢 Aviso Oficial',
+      server: '⚔️ Notícia do Servidor',
+    }[destino];
+
+    // Cor por canal
+    const cor = {
+      lore:   0xD4AF37,
+      avisos: 0xE74C3C,
+      server: 0x5865F2,
+    }[destino];
 
     const canalId = CANAIS[destino];
     const canal   = client.channels.cache.get(canalId);
@@ -99,16 +112,24 @@ client.on('interactionCreate', async interaction => {
       .setTimestamp()
       .setFooter({ text: '✦ Crônicas Oficiais do Servidor ✦' });
 
-    // Adiciona imagem apenas se for lore e URL foi fornecida
     if (destino === 'lore' && imagem) {
       embed.setImage(imagem);
     }
 
-    await canal.send({ embeds: [embed] });
+    // Envia @everyone + embed
+    await canal.send({
+      content: '@everyone',
+      embeds: [embed],
+      allowedMentions: { parse: ['everyone'] }
+    });
 
     await interaction.editReply({
       content: `✅ Anúncio enviado em <#${canalId}>!`
     });
+
+    setTimeout(async () => {
+      await interaction.deleteReply();
+    }, 3000);
 
   } catch (erro) {
     console.error('Erro completo:', erro.message);
