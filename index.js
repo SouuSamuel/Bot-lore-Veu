@@ -18,27 +18,30 @@ const CANAIS = {
   server: process.env.CANAL_SERVER,
 };
 
-// Identidade visual por canal
 const ESTILO = {
   lore: {
-    titulo:    '⚜️ Crônicas do Reino ⚜️',
-    cor:       0xD4AF37,  // dourado
-    footer:    '✦ Os escribas registraram mais uma história ✦',
-    thumbnail: 'https://i.imgur.com/9QMpHQG.png', // pergaminho
+    titulo: '⚜️ Crônicas do Reino ⚜️',
+    cor:    0xD4AF37,
+    footer: '✦ Os escribas registraram mais uma história ✦',
   },
   avisos: {
-    titulo:    '🔔 Decreto Real 🔔',
-    cor:       0xC0392B,  // vermelho sangue
-    footer:    '⚔️ Por ordem do Conselho do Véu ⚔️',
-    thumbnail: 'https://i.imgur.com/2nCt3Sn.png', // brasão
+    titulo: '🔔 Decreto Real 🔔',
+    cor:    0xC0392B,
+    footer: '⚔️ Por ordem do Conselho do Véu ⚔️',
   },
   server: {
-    titulo:    '🏰 Notícias do Reino 🏰',
-    cor:       0x2E86AB,  // azul aço
-    footer:    '🌑 O Véu observa a todos 🌑',
-    thumbnail: 'https://i.imgur.com/7QMpHQG.png', // castelo
+    titulo: '🏰 Notícias do Reino 🏰',
+    cor:    0x2E86AB,
+    footer: '🌑 O Véu observa a todos 🌑',
   },
 };
+
+// Extrai o ID do vídeo do YouTube automaticamente
+function extrairYoutubeId(link) {
+  const regex = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+  const match = link?.match(regex);
+  return match ? match[1] : null;
+}
 
 const commands = [
   new SlashCommandBuilder()
@@ -66,12 +69,12 @@ const commands = [
     )
     .addStringOption(opt =>
       opt.setName('imagem')
-        .setDescription('URL da imagem principal (opcional)')
+        .setDescription('URL de imagem personalizada (opcional)')
         .setRequired(false)
     )
     .addStringOption(opt =>
       opt.setName('link')
-        .setDescription('Link do YouTube ou outro (opcional)')
+        .setDescription('Link do YouTube — vira título clicável com thumbnail automática')
         .setRequired(false)
     )
 ].map(cmd => cmd.toJSON());
@@ -120,32 +123,36 @@ client.on('interactionCreate', async interaction => {
       });
     }
 
-    // Formata a mensagem com estilo medieval
-    const mensagemFormatada = `*${mensagem}*`;
+    // Extrai ID do YouTube se tiver link
+    const youtubeId = extrairYoutubeId(link);
+    const thumbnailYoutube = youtubeId
+      ? `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`
+      : null;
 
     const embed = new EmbedBuilder()
       .setTitle(titulo || estilo.titulo)
-      .setDescription(mensagemFormatada)
+      .setDescription(`*${mensagem}*`)
       .setColor(estilo.cor)
       .setTimestamp()
       .setFooter({ text: estilo.footer });
 
-    // Imagem principal (grande, embaixo)
-    if (imagem) {
-      embed.setImage(imagem);
+    // Se tiver link do YouTube, título vira clicável e thumbnail aparece no embed
+    if (link) {
+      embed.setURL(link);
     }
 
-    // Envia @everyone + embed
+    // Prioridade: imagem manual > thumbnail do YouTube
+    if (imagem) {
+      embed.setImage(imagem);
+    } else if (thumbnailYoutube) {
+      embed.setImage(thumbnailYoutube);
+    }
+
     await canal.send({
       content: '@everyone',
       embeds: [embed],
       allowedMentions: { parse: ['everyone'] }
     });
-
-    // Link separado para gerar prévia
-    if (link) {
-      await canal.send({ content: link });
-    }
 
     await interaction.editReply({
       content: `✅ Anúncio enviado em <#${canalId}>!`
