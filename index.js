@@ -120,12 +120,17 @@ client.on('interactionCreate', async interaction => {
       embed.setImage(imagem);
     }
 
-    // Envia tudo em uma mensagem só — link gera prévia automaticamente
+    // Envia @everyone + embed
     await canal.send({
-      content: link ? `@everyone\n${link}` : '@everyone',
+      content: '@everyone',
       embeds: [embed],
       allowedMentions: { parse: ['everyone'] }
     });
+
+    // Se tiver link, envia separado para gerar a prévia
+    if (link) {
+      await canal.send({ content: link });
+    }
 
     await interaction.editReply({
       content: `✅ Anúncio enviado em <#${canalId}>!`
