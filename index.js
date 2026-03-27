@@ -59,7 +59,7 @@ const commands = [
     )
     .addStringOption(opt =>
       opt.setName('mensagem')
-        .setDescription('Conteúdo do anúncio')
+        .setDescription('Conteúdo do anúncio — use \\n para quebrar linha')
         .setRequired(true)
     )
     .addStringOption(opt =>
@@ -123,6 +123,9 @@ client.on('interactionCreate', async interaction => {
       });
     }
 
+    // Converte \n em quebra de linha real
+    const mensagemFinal = mensagem.replace(/\\n/g, '\n');
+
     // Extrai ID do YouTube se tiver link
     const youtubeId = extrairYoutubeId(link);
     const thumbnailYoutube = youtubeId
@@ -131,12 +134,12 @@ client.on('interactionCreate', async interaction => {
 
     const embed = new EmbedBuilder()
       .setTitle(titulo || estilo.titulo)
-      .setDescription(`*${mensagem}*`)
+      .setDescription(`*${mensagemFinal}*`)
       .setColor(estilo.cor)
       .setTimestamp()
       .setFooter({ text: estilo.footer });
 
-    // Se tiver link do YouTube, título vira clicável e thumbnail aparece no embed
+    // Se tiver link do YouTube, título vira clicável
     if (link) {
       embed.setURL(link);
     }
