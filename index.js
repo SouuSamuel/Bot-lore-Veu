@@ -18,6 +18,28 @@ const CANAIS = {
   server: process.env.CANAL_SERVER,
 };
 
+// Identidade visual por canal
+const ESTILO = {
+  lore: {
+    titulo:    '⚜️ Crônicas do Reino ⚜️',
+    cor:       0xD4AF37,  // dourado
+    footer:    '✦ Os escribas registraram mais uma história ✦',
+    thumbnail: 'https://i.imgur.com/9QMpHQG.png', // pergaminho
+  },
+  avisos: {
+    titulo:    '🔔 Decreto Real 🔔',
+    cor:       0xC0392B,  // vermelho sangue
+    footer:    '⚔️ Por ordem do Conselho do Véu ⚔️',
+    thumbnail: 'https://i.imgur.com/2nCt3Sn.png', // brasão
+  },
+  server: {
+    titulo:    '🏰 Notícias do Reino 🏰',
+    cor:       0x2E86AB,  // azul aço
+    footer:    '🌑 O Véu observa a todos 🌑',
+    thumbnail: 'https://i.imgur.com/7QMpHQG.png', // castelo
+  },
+};
+
 const commands = [
   new SlashCommandBuilder()
     .setName('anunciar')
@@ -39,17 +61,17 @@ const commands = [
     )
     .addStringOption(opt =>
       opt.setName('titulo')
-        .setDescription('Título do anúncio (opcional)')
+        .setDescription('Título personalizado (opcional)')
         .setRequired(false)
     )
     .addStringOption(opt =>
       opt.setName('imagem')
-        .setDescription('URL da imagem (opcional, só para Lore)')
+        .setDescription('URL da imagem principal (opcional)')
         .setRequired(false)
     )
     .addStringOption(opt =>
       opt.setName('link')
-        .setDescription('Link do YouTube ou outro (opcional, aparece com prévia)')
+        .setDescription('Link do YouTube ou outro (opcional)')
         .setRequired(false)
     )
 ].map(cmd => cmd.toJSON());
@@ -88,18 +110,7 @@ client.on('interactionCreate', async interaction => {
     const imagem   = interaction.options.getString('imagem');
     const link     = interaction.options.getString('link');
 
-    const tituloPadrao = {
-      lore:   '📜 Crônicas do Reino',
-      avisos: '📢 Aviso Oficial',
-      server: '⚔️ Notícia do Servidor',
-    }[destino];
-
-    const cor = {
-      lore:   0xD4AF37,
-      avisos: 0xE74C3C,
-      server: 0x5865F2,
-    }[destino];
-
+    const estilo  = ESTILO[destino];
     const canalId = CANAIS[destino];
     const canal   = client.channels.cache.get(canalId);
 
@@ -109,14 +120,18 @@ client.on('interactionCreate', async interaction => {
       });
     }
 
-    const embed = new EmbedBuilder()
-      .setTitle(titulo || tituloPadrao)
-      .setDescription(mensagem)
-      .setColor(cor)
-      .setTimestamp()
-      .setFooter({ text: '✦ Crônicas Oficiais do Servidor ✦' });
+    // Formata a mensagem com estilo medieval
+    const mensagemFormatada = `*${mensagem}*`;
 
-    if (destino === 'lore' && imagem) {
+    const embed = new EmbedBuilder()
+      .setTitle(titulo || estilo.titulo)
+      .setDescription(mensagemFormatada)
+      .setColor(estilo.cor)
+      .setTimestamp()
+      .setFooter({ text: estilo.footer });
+
+    // Imagem principal (grande, embaixo)
+    if (imagem) {
       embed.setImage(imagem);
     }
 
@@ -127,7 +142,7 @@ client.on('interactionCreate', async interaction => {
       allowedMentions: { parse: ['everyone'] }
     });
 
-    // Se tiver link, envia separado para gerar a prévia
+    // Link separado para gerar prévia
     if (link) {
       await canal.send({ content: link });
     }
