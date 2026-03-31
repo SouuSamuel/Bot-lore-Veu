@@ -5,20 +5,16 @@ const {
   REST,
   Routes,
   SlashCommandBuilder,
-  EmbedBuilder
+  EmbedBuilder,
+  ChannelType
 } = require('discord.js');
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
 
-const CANAIS = {
-  lore:   process.env.CANAL_LORE,
-  avisos: process.env.CANAL_AVISOS,
-  server: process.env.CANAL_SERVER,
-};
-
-const ESTILO = {
+// Estilos disponíveis para o anúncio
+const ESTILOS = {
   lore: {
     titulo: '⚜️ Crônicas do Reino ⚜️',
     cor:    0xD4AF37,
@@ -46,21 +42,27 @@ function extrairYoutubeId(link) {
 const commands = [
   new SlashCommandBuilder()
     .setName('anunciar')
-    .setDescription('Anuncia uma mensagem em um canal do servidor')
-    .addStringOption(opt =>
+    .setDescription('Anuncia uma mensagem em qualquer canal do servidor')
+    .addChannelOption(opt =>
       opt.setName('canal')
-        .setDescription('Onde postar o anúncio')
+        .setDescription('Selecione o canal de destino')
         .setRequired(true)
-        .addChoices(
-          { name: '📜 Lore',     value: 'lore'   },
-          { name: '📢 Avisos',   value: 'avisos'  },
-          { name: '⚔️ Servidor', value: 'server'  },
-        )
+        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
     )
     .addStringOption(opt =>
       opt.setName('mensagem')
         .setDescription('Conteúdo do anúncio — use \\n para quebrar linha')
         .setRequired(true)
+    )
+    .addStringOption(opt =>
+      opt.setName('estilo')
+        .setDescription('Estilo visual do embed (padrão: Servidor)')
+        .setRequired(false)
+        .addChoices(
+          { name: '⚜️ Lore',      value: 'lore'   },
+          { name: '🔔 Avisos',    value: 'avisos'  },
+          { name: '🏰 Servidor',  value: 'server'  },
+        )
     )
     .addStringOption(opt =>
       opt.setName('titulo')
@@ -107,21 +109,20 @@ client.on('interactionCreate', async interaction => {
       });
     }
 
-    const destino  = interaction.options.getString('canal');
+    const canal    = interaction.options.getChannel('canal');
     const mensagem = interaction.options.getString('mensagem');
+    const estiloId = interaction.options.getString('estilo') || 'server';
     const titulo   = interaction.options.getString('titulo');
     const imagem   = interaction.options.getString('imagem');
     const link     = interaction.options.getString('link');
 
-    const estilo  = ESTILO[destino];
-    const canalId = CANAIS[destino];
-    const canal   = client.channels.cache.get(canalId);
-
     if (!canal) {
       return interaction.editReply({
-        content: '❌ Canal não encontrado. Verifique as variáveis de ambiente.'
+        content: '❌ Canal não encontrado.'
       });
     }
+
+    const estilo = ESTILOS[estiloId];
 
     // Converte \n em quebra de linha real
     const mensagemFinal = mensagem.replace(/\\n/g, '\n');
@@ -158,7 +159,7 @@ client.on('interactionCreate', async interaction => {
     });
 
     await interaction.editReply({
-      content: `✅ Anúncio enviado em <#${canalId}>!`
+      content: `✅ Anúncio enviado em <#${canal.id}>!`
     });
 
     setTimeout(async () => {
